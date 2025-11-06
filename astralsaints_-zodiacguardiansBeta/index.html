@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AstralSaints: ZodiacGuardians</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              cinzel: ['"Cinzel"', 'serif'],
+              orbitron: ['"Orbitron"', 'sans-serif'],
+            },
+            animation: {
+              'fadeIn': 'fadeIn 1s ease-in-out',
+              'scroll-bg': 'scroll-bg 20s linear infinite',
+              'scroll-bg-reverse': 'scroll-bg 40s linear infinite reverse',
+              'evolve-flash': 'evolve-flash 0.8s ease-out forwards',
+              'screen-flash': 'screen-flash 0.5s ease-out forwards',
+              'text-glow-button': 'text-glow-button 1.5s ease-in-out infinite alternate',
+            },
+            keyframes: {
+              'fadeIn': {
+                'from': { opacity: '0' },
+                'to': { opacity: '1' },
+              },
+             'scroll-bg': {
+                'from': { backgroundPosition: '0 0' },
+                'to': { backgroundPosition: '0 -1024px' },
+              },
+              'evolve-flash': {
+                '0%': { transform: 'scale(1)', filter: 'brightness(1.5) drop-shadow(0 0 10px #fff)' },
+                '50%': { transform: 'scale(1.5)', filter: 'brightness(4) drop-shadow(0 0 45px #fff)' },
+                '100%': { transform: 'scale(1)', filter: 'brightness(1.5)' },
+              },
+              'screen-flash': {
+                  '0%': { opacity: '0' },
+                  '50%': { opacity: '0.8' },
+                  '100%': { opacity: '0' },
+              },
+              'text-glow-button': {
+                'from': { textShadow: '0 0 10px #fff, 0 0 20px #fff, 0 0 30px #0ea5e9, 0 0 40px #0ea5e9' },
+                'to': { textShadow: '0 0 20px #fff, 0 0 30px #0284c7, 0 0 40px #0284c7, 0 0 50px #0284c7' }
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body {
+        font-family: 'Orbitron', sans-serif;
+        background-color: #000;
+      }
+      .text-glow {
+        text-shadow: 0 0 5px rgba(255, 255, 255, 0.7), 0 0 10px rgba(122, 220, 255, 0.5);
+      }
+      .hud-panel {
+        background: rgba(0, 20, 40, 0.6);
+        border: 1px solid rgba(12, 172, 239, 0.4);
+        box-shadow: 0 0 15px rgba(12, 172, 239, 0.15) inset, 0 0 5px rgba(12, 172, 239, 0.3);
+        padding: 8px 12px;
+        border-radius: 4px;
+        backdrop-filter: blur(2px);
+      }
+      .hud-special-weapon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 2px solid #0cacef;
+        background-color: rgba(0, 20, 40, 0.8);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 0 10px #0cacef;
+      }
+      .hud-special-weapon-cooldown {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background-color: #f59e0b;
+        transition: height 0.1s linear;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
