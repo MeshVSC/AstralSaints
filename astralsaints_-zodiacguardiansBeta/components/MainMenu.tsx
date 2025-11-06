@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShipType, FormLevel } from '../types';
-import { PegasusIcon, DragonIcon, CygnusIcon, AndromedaIcon, PhoenixIcon } from './icons';
+import { PegasusIcon, DragonIcon, CygnusIcon, AndromedaIcon, PhoenixIcon, LogoIcon } from './icons';
 
 import { SHIP_DATA } from '../constants';
 
@@ -20,7 +20,7 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStartGame }) => {
   const MainScreen = () => (
     <>
       <div className="text-center mb-12">
-        <img src={"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCAzMDAgODAiPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQ2luemVsLCBzZXJpZiIgZm9udC1zaXplPSI0MCIgZmlsbD0iI0ZGRkZGRiIgc3R5bGU9InRleHQtc2hhZG93OiAwIDAgMTBweCAjRkZGRkZGOyI+QVNUUkFMU0FJTlRTPC90ZXh0Pjwvc3ZnPg=="} alt="AstralSaints Logo" className="w-auto h-48 mb-2 mx-auto" />
+        <LogoIcon className="w-auto h-48 mb-2 mx-auto" />
       </div>
 
       <div className="flex flex-col items-center space-y-6">
