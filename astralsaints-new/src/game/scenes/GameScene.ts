@@ -11,6 +11,7 @@ export default class GameScene extends Phaser.Scene {
   private enemyBullets!: Phaser.Physics.Arcade.Group;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private spaceKey!: Phaser.Input.Keyboard.Key;
+  private rKey!: Phaser.Input.Keyboard.Key;
 
   // Game state
   private score: number = 0;
@@ -18,6 +19,7 @@ export default class GameScene extends Phaser.Scene {
   private armor: number = 50;
   private lastFired: number = 0;
   private currentShipId: string = DEFAULT_SHIP;
+  private autoFire: boolean = false; // Toggle for auto-fire vs hold to fire
 
   // UI
   private scoreText!: Phaser.GameObjects.Text;
@@ -48,13 +50,14 @@ export default class GameScene extends Phaser.Scene {
     this.health = shipConfig.maxHealth;
     this.armor = shipConfig.maxArmor;
 
-    // Player
-    this.player = this.physics.add.sprite(400, 500, '');
-    this.player.setDisplaySize(shipConfig.size.width, shipConfig.size.height);
+    // Player - smaller size for vertical screen
+    const playerSize = Math.floor(shipConfig.size.width * 0.7); // 30% smaller
+    this.player = this.physics.add.sprite(300, 800, '');
+    this.player.setDisplaySize(playerSize, playerSize);
     const playerGraphics = this.add.graphics();
     playerGraphics.fillStyle(0x00ff00);
-    playerGraphics.fillTriangle(20, 0, 0, 40, 40, 40); // Triangle ship
-    playerGraphics.generateTexture('player', 40, 40);
+    playerGraphics.fillTriangle(playerSize/2, 0, 0, playerSize, playerSize, playerSize); // Triangle ship
+    playerGraphics.generateTexture('player', playerSize, playerSize);
     playerGraphics.destroy();
     this.player.setTexture('player');
     this.player.setCollideWorldBounds(true);
@@ -78,6 +81,24 @@ export default class GameScene extends Phaser.Scene {
     // Controls
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.spaceKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+    this.rKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.R);
+
+    // A key to toggle auto-fire
+    const aKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+    aKey.on('down', () => {
+      this.autoFire = !this.autoFire;
+      const message = this.autoFire ? 'AUTO-FIRE ON' : 'AUTO-FIRE OFF';
+      const text = this.add.text(this.scale.width / 2, this.scale.height / 2, message, {
+        fontSize: '24px',
+        color: this.autoFire ? '#00ff00' : '#ff0000'
+      }).setOrigin(0.5);
+      this.tweens.add({
+        targets: text,
+        alpha: 0,
+        duration: 1000,
+        onComplete: () => text.destroy()
+      });
+    });
 
     // UI
     this.createUI();
@@ -140,24 +161,24 @@ export default class GameScene extends Phaser.Scene {
   }
 
   private createGraphics() {
-    // Bullet graphics
+    // Bullet graphics - smaller
     const bulletGraphics = this.add.graphics();
     bulletGraphics.fillStyle(0x00ffff);
-    bulletGraphics.fillRect(0, 0, 4, 16); // Longer bullets
-    bulletGraphics.generateTexture('bullet', 4, 16);
+    bulletGraphics.fillRect(0, 0, 3, 12);
+    bulletGraphics.generateTexture('bullet', 3, 12);
     bulletGraphics.destroy();
 
     const enemyBulletGraphics = this.add.graphics();
     enemyBulletGraphics.fillStyle(0xff3366);
-    enemyBulletGraphics.fillCircle(4, 4, 4);
-    enemyBulletGraphics.generateTexture('enemyBullet', 8, 8);
+    enemyBulletGraphics.fillCircle(3, 3, 3);
+    enemyBulletGraphics.generateTexture('enemyBullet', 6, 6);
     enemyBulletGraphics.destroy();
 
-    // Enemy graphics (placeholder)
+    // Enemy graphics (placeholder) - smaller
     const enemyGraphics = this.add.graphics();
     enemyGraphics.fillStyle(0xff3333);
-    enemyGraphics.fillRect(0, 0, 30, 30);
-    enemyGraphics.generateTexture('enemy', 30, 30);
+    enemyGraphics.fillRect(0, 0, 22, 22);
+    enemyGraphics.generateTexture('enemy', 22, 22);
     enemyGraphics.destroy();
   }
 
@@ -190,9 +211,20 @@ export default class GameScene extends Phaser.Scene {
     }).setOrigin(1, 0);
 
     this.add.text(this.scale.width / 2, 16, `${shipConfig.name} - AstralSaints`, {
-      fontSize: '20px',
+      fontSize: '18px',
       color: '#ffffff'
     }).setOrigin(0.5, 0);
+
+    // Controls hint
+    this.add.text(this.scale.width / 2, this.scale.height - 60, 'Arrows: Move | Space: Shoot', {
+      fontSize: '12px',
+      color: '#888888'
+    }).setOrigin(0.5);
+
+    this.add.text(this.scale.width / 2, this.scale.height - 40, 'A: Toggle Auto-Fire | R: Restart', {
+      fontSize: '12px',
+      color: '#888888'
+    }).setOrigin(0.5);
   }
 
   private setupCollisions() {
@@ -229,6 +261,14 @@ export default class GameScene extends Phaser.Scene {
     this.waveManager.update();
     this.levelManager.update();
 
+    // Restart on R key
+    if (Phaser.Input.Keyboard.JustDown(this.rKey)) {
+      this.currentLevel = 1;
+      this.score = 0;
+      this.scene.restart();
+      return;
+    }
+
     // Player movement - MUCH FASTER
     const shipConfig = SHIPS[this.currentShipId];
     const speed = shipConfig.speed;
@@ -246,8 +286,9 @@ export default class GameScene extends Phaser.Scene {
       this.player.setVelocityY(speed);
     }
 
-    // Firing - FASTER
-    if (this.spaceKey.isDown && time > this.lastFired + shipConfig.fireRate) {
+    // Firing - support both auto-fire and manual
+    const shouldFire = this.autoFire ? true : this.spaceKey.isDown;
+    if (shouldFire && time > this.lastFired + shipConfig.fireRate) {
       this.fireBullet();
       this.lastFired = time;
     }
@@ -274,13 +315,13 @@ export default class GameScene extends Phaser.Scene {
 
   private fireBullet() {
     const shipConfig = SHIPS[this.currentShipId];
-    const bullet = this.playerBullets.get(this.player.x, this.player.y - 30);
+    const bullet = this.playerBullets.get(this.player.x, this.player.y - 25);
     if (bullet) {
       bullet.setTexture('bullet');
       bullet.setActive(true);
       bullet.setVisible(true);
-      bullet.setVelocityY(-shipConfig.bulletSpeed); // MUCH FASTER
-      bullet.setDisplaySize(4, 16);
+      bullet.setVelocityY(-shipConfig.bulletSpeed);
+      bullet.setDisplaySize(3, 12);
       bullet.setData('damage', shipConfig.bulletDamage);
     }
   }
@@ -310,13 +351,13 @@ export default class GameScene extends Phaser.Scene {
 
     if (!enemyConfig || !enemyConfig.bulletSpeed) return;
 
-    const bullet = this.enemyBullets.get(enemy.x, enemy.y + 20);
+    const bullet = this.enemyBullets.get(enemy.x, enemy.y + 15);
     if (bullet) {
       bullet.setTexture('enemyBullet');
       bullet.setActive(true);
       bullet.setVisible(true);
       bullet.setVelocityY(enemyConfig.bulletSpeed);
-      bullet.setDisplaySize(8, 8);
+      bullet.setDisplaySize(6, 6);
       bullet.setData('damage', enemyConfig.bulletDamage);
     }
   }

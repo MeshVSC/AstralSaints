@@ -202,6 +202,14 @@ export class WaveManager {
 
       enemyData.targetPos = positions[index];
 
+      // Stagger shooting timing to avoid all enemies firing at once
+      // Give each enemy a random offset for their first shot
+      const fireRate = enemyData.sprite.getData('fireRate');
+      if (fireRate) {
+        const randomOffset = Phaser.Math.Between(0, fireRate * 0.8);
+        enemyData.sprite.setData('lastFired', this.scene.time.now - fireRate + randomOffset);
+      }
+
       // Tween to formation position
       this.scene.tweens.add({
         targets: enemyData.sprite,
@@ -308,6 +316,23 @@ export class WaveManager {
             });
             index++;
           }
+        }
+        break;
+      }
+
+      case 'staggered': {
+        // Valley-mountain-valley pattern with alternating heights
+        const totalWidth = (count - 1) * spacing;
+        const startX = centerX - totalWidth / 2;
+        const yVariation = 60; // How much height variation
+
+        for (let i = 0; i < count; i++) {
+          // Alternate between high (valley) and low (mountain)
+          const yOffset = (i % 2 === 0) ? -yVariation : yVariation;
+          positions.push({
+            x: startX + i * spacing,
+            y: centerY + yOffset
+          });
         }
         break;
       }

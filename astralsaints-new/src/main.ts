@@ -4,8 +4,8 @@ import GameScene from './game/scenes/GameScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
+  width: 600,
+  height: 900,
   parent: 'game-container',
   backgroundColor: '#000033',
   physics: {
