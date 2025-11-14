@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
 import { WaveManager } from '../systems/WaveManager';
 import { LevelManager } from '../systems/LevelManager';
+import { PowerUpManager } from '../systems/PowerUpManager';
 import { SHIPS, DEFAULT_SHIP } from '../../config/ships';
 import { ENEMY_TYPES } from '../../config/enemies';
+import { WEAPON_TYPES, WeaponType } from '../../config/weapons';
 
 export default class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
@@ -31,6 +33,7 @@ export default class GameScene extends Phaser.Scene {
   // Systems
   private waveManager!: WaveManager;
   private levelManager!: LevelManager;
+  private powerUpManager!: PowerUpManager;
   private currentLevel: number = 1;
 
   // Starfield
@@ -109,6 +112,7 @@ export default class GameScene extends Phaser.Scene {
     // Initialize systems
     this.waveManager = new WaveManager(this, this.enemies);
     this.levelManager = new LevelManager(this, this.waveManager);
+    this.powerUpManager = new PowerUpManager(this);
 
     // Start level 1
     this.levelManager.startLevel(this.currentLevel);
@@ -251,6 +255,17 @@ export default class GameScene extends Phaser.Scene {
       undefined,
       this
     );
+
+    // Power-up collision - set up after powerUpManager is created
+    this.time.delayedCall(100, () => {
+      this.physics.add.overlap(
+        this.player,
+        this.powerUpManager.getPowerUpGroup(),
+        this.collectPowerUp as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+        undefined,
+        this
+      );
+    });
   }
 
   update(time: number) {
@@ -260,6 +275,7 @@ export default class GameScene extends Phaser.Scene {
     // Update systems
     this.waveManager.update();
     this.levelManager.update();
+    this.powerUpManager.update();
 
     // Restart on R key
     if (Phaser.Input.Keyboard.JustDown(this.rKey)) {
@@ -269,9 +285,9 @@ export default class GameScene extends Phaser.Scene {
       return;
     }
 
-    // Player movement - MUCH FASTER
+    // Player movement - apply speed multiplier from power-ups
     const shipConfig = SHIPS[this.currentShipId];
-    const speed = shipConfig.speed;
+    const speed = shipConfig.speed * this.powerUpManager.speedMultiplier;
     this.player.setVelocity(0);
 
     if (this.cursors.left.isDown) {
@@ -286,12 +302,27 @@ export default class GameScene extends Phaser.Scene {
       this.player.setVelocityY(speed);
     }
 
-    // Firing - support both auto-fire and manual
+    // Firing - support both auto-fire and manual, apply fire rate multiplier
     const shouldFire = this.autoFire ? true : this.spaceKey.isDown;
-    if (shouldFire && time > this.lastFired + shipConfig.fireRate) {
+    const weaponConfig = WEAPON_TYPES[this.powerUpManager.currentWeapon];
+    const adjustedFireRate = shipConfig.fireRate * weaponConfig.fireRate * this.powerUpManager.fireRateMultiplier;
+
+    if (shouldFire && time > this.lastFired + adjustedFireRate) {
       this.fireBullet();
       this.lastFired = time;
     }
+
+    // Update wave bullets
+    this.playerBullets.children.each((bullet: Phaser.GameObjects.GameObject) => {
+      const b = bullet as Phaser.Physics.Arcade.Sprite;
+      if (b.getData('wave')) {
+        const waveOffset = b.getData('waveOffset') || 0;
+        const newOffset = waveOffset + 0.1;
+        b.setData('waveOffset', newOffset);
+        const amplitude = 40;
+        b.x = b.getData('startX') + Math.sin(newOffset) * amplitude;
+      }
+    });
 
     // Clean up off-screen bullets
     this.playerBullets.children.each((bullet: Phaser.GameObjects.GameObject) => {
@@ -315,14 +346,72 @@ export default class GameScene extends Phaser.Scene {
 
   private fireBullet() {
     const shipConfig = SHIPS[this.currentShipId];
+    const weaponConfig = WEAPON_TYPES[this.powerUpManager.currentWeapon];
+
+    // Apply power-up multipliers
+    const baseDamage = shipConfig.bulletDamage * weaponConfig.damage * this.powerUpManager.damageMultiplier;
+    const bulletSpeed = shipConfig.bulletSpeed * weaponConfig.bulletSpeed;
+
+    // Fire based on weapon pattern
+    switch (weaponConfig.pattern) {
+      case 'single':
+        this.fireSingleBullet(bulletSpeed, baseDamage, weaponConfig.color);
+        break;
+
+      case 'triple':
+        // Spread shot - 3 bullets in cone
+        for (let i = -1; i <= 1; i++) {
+          const angle = i * (weaponConfig.spread || 20);
+          this.fireAngledBullet(angle, bulletSpeed, baseDamage, weaponConfig.color);
+        }
+        break;
+
+      case 'wave':
+        // Single bullet but with wave data
+        const bullet = this.fireSingleBullet(bulletSpeed, baseDamage, weaponConfig.color);
+        if (bullet) {
+          bullet.setData('wave', true);
+          bullet.setData('waveOffset', 0);
+          bullet.setData('startX', this.player.x);
+        }
+        break;
+
+      default:
+        this.fireSingleBullet(bulletSpeed, baseDamage, weaponConfig.color);
+    }
+  }
+
+  private fireSingleBullet(speed: number, damage: number, color: number): Phaser.Physics.Arcade.Sprite | null {
     const bullet = this.playerBullets.get(this.player.x, this.player.y - 25);
     if (bullet) {
       bullet.setTexture('bullet');
+      bullet.setTint(color);
       bullet.setActive(true);
       bullet.setVisible(true);
-      bullet.setVelocityY(-shipConfig.bulletSpeed);
+      bullet.setVelocityY(-speed);
       bullet.setDisplaySize(3, 12);
-      bullet.setData('damage', shipConfig.bulletDamage);
+      bullet.setData('damage', damage);
+      return bullet as Phaser.Physics.Arcade.Sprite;
+    }
+    return null;
+  }
+
+  private fireAngledBullet(angleDegrees: number, speed: number, damage: number, color: number): void {
+    const bullet = this.playerBullets.get(this.player.x, this.player.y - 25);
+    if (bullet) {
+      bullet.setTexture('bullet');
+      bullet.setTint(color);
+      bullet.setActive(true);
+      bullet.setVisible(true);
+
+      // Convert angle to radians and calculate velocity
+      const angleRad = Phaser.Math.DegToRad(angleDegrees - 90); // -90 because 0 degrees is up
+      const vx = Math.cos(angleRad) * speed;
+      const vy = Math.sin(angleRad) * speed;
+
+      bullet.setVelocity(vx, vy);
+      bullet.setDisplaySize(3, 12);
+      bullet.setData('damage', damage);
     }
   }
 
@@ -394,8 +483,31 @@ export default class GameScene extends Phaser.Scene {
 
       const scoreValue = e.getData('scoreValue') || 100;
       this.score += scoreValue;
+
+      // Spawn power-up drop
+      this.powerUpManager.spawnPowerUp(e.x, e.y);
+
       e.destroy();
     }
+  }
+
+  private collectPowerUp(
+    player: Phaser.Types.Physics.Arcade.GameObjectWithBody,
+    powerup: Phaser.Types.Physics.Arcade.GameObjectWithBody
+  ) {
+    const pickup = powerup as Phaser.Physics.Arcade.Sprite;
+    const type = pickup.getData('type');
+
+    // Handle shield power-up specially
+    if (type === 'shield') {
+      this.armor += 50;
+      const shipConfig = SHIPS[this.currentShipId];
+      if (this.armor > shipConfig.maxArmor) {
+        this.armor = shipConfig.maxArmor;
+      }
+    }
+
+    this.powerUpManager.collectPowerUp(pickup);
   }
 
   private hitPlayer(
